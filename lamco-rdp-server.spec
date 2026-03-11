@@ -28,6 +28,10 @@ ExcludeArch:    ppc64le
 # with Cargo's own LTO (we use CARGO_PROFILE_RELEASE_LTO=thin below)
 %global _lto_cflags %{nil}
 
+# Fix build with libva >= 2.22 (Fedora rawhide): new fields in VAEncPictureParameterBufferVP9
+# Upstream cros-libva is dormant; this adds ..Default::default() to handle unknown fields
+Patch0:         cros-libva-vp9-compat.patch
+
 
 # Vendored Rust crates: 920 crates vendored in source tarball.
 # Non-free package cannot use distro Rust crate packaging; cargo --offline
@@ -1028,6 +1032,9 @@ Features:
 
 %prep
 %setup -q
+%patch -P 0 -p1
+# Clear vendored cros-libva checksum so cargo does not reject the patched file
+sed -i 's/"files":{[^}]*}/"files":{}/' vendor/cros-libva/.cargo-checksum.json
 
 %build
 # Use vendored dependencies (tarball includes vendor/ and .cargo/config.toml)
@@ -1100,7 +1107,7 @@ appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/io.lamco.rdp-s
 - PipeWire stream DRIVER flag: ensure frames at negotiated framerate
 - Fix Wayland WouldBlock handling in event loop
 - Fix MIME charset handling for clipboard text negotiation
-- Remove cros-libva-vp9-compat.patch (pre-applied in vendor tarball)
+- Retain cros-libva-vp9-compat.patch for libva >= 2.22 compatibility
 
 * Thu Mar 05 2026 Greg Lamberson <greg@lamco.io> - 1.4.1-3
 - Fix BitmapConverter not resetting on client reconnection
