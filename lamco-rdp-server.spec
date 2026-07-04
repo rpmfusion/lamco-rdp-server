@@ -7,7 +7,7 @@
 
 Name:           lamco-rdp-server
 Version:        1.4.4
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Wayland RDP server for Linux desktop sharing with GUI
 
 # Why RPM Fusion nonfree: BUSL-1.1 is not an OSI-approved open source license.
@@ -26,7 +26,7 @@ Source0:        https://github.com/lamco-admin/lamco-rdp-server/releases/downloa
 # Standard Fedora pattern (used by Thunderbird, uv, etc.)
 %ifarch ppc64le
 %global rustflags_debuginfo 0
-%global rustflags_codegen_units 16
+%global rustflags_codegen_units 256
 %global debug_package %{nil}
 %endif
 
@@ -1113,6 +1113,9 @@ appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/io.lamco.rdp-s
 %{_datadir}/icons/hicolor/*/apps/io.lamco.rdp-server.png
 
 %changelog
+* Sat Jul 04 2026 Greg Lamberson <greg@lamco.io> - 1.4.4-4
+- Raise ppc64le codegen-units to 256 for the tighter rawhide builder
+
 * Sat Jul 04 2026 Greg Lamberson <greg@lamco.io> - 1.4.4-3
 - Fix ppc64le OOM: disable debuginfo and thin-LTO, raise codegen-units on ppc64le
 
