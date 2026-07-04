@@ -6,7 +6,7 @@
 #
 
 Name:           lamco-rdp-server
-Version:        1.4.2
+Version:        1.4.4
 Release:        1%{?dist}
 Summary:        Wayland RDP server for Linux desktop sharing with GUI
 
@@ -20,9 +20,13 @@ License:        0BSD AND Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-1
 URL:            https://www.lamco.ai/products/lamco-rdp-server/
 Source0:        https://github.com/lamco-admin/lamco-rdp-server/releases/download/v%{version}/%{name}-%{version}.tar.xz
 
-# No Wayland desktop use case on ppc64le; also OOM during Rust compilation
-# on ppc64le builders (cargo-rpm-macros overrides codegen-units settings)
-ExcludeArch:    ppc64le
+# Reduce debuginfo on ppc64le to avoid OOM during linking.
+# ppc64le Koji builders have less memory; full debuginfo with codegen-units=1
+# (from cargo-rpm-macros) exceeds available RAM at link time.
+# Standard Fedora pattern (used by Thunderbird, uv, etc.)
+%ifarch ppc64le
+%global rustflags_debuginfo 1
+%endif
 
 # Disable Fedora's system-level LTO flags to prevent double-LTO interaction
 # with Cargo's own LTO (we use CARGO_PROFILE_RELEASE_LTO=thin below)
@@ -31,7 +35,6 @@ ExcludeArch:    ppc64le
 # Fix build with libva >= 2.22 (Fedora rawhide): new fields in VAEncPictureParameterBufferVP9
 # Upstream cros-libva is dormant; this adds ..Default::default() to handle unknown fields
 Patch0:         cros-libva-vp9-compat.patch
-
 
 # Vendored Rust crates: 920 crates vendored in source tarball.
 # Non-free package cannot use distro Rust crate packaging; cargo --offline
@@ -94,6 +97,7 @@ Requires:       pam
 Recommends:     libva
 Recommends:     intel-media-driver
 Recommends:     mesa-va-drivers
+
 
 # Bundled crate provides (920 vendored Rust crates)
 Provides:       bundled(crate(ab_glyph)) = 0.2.32
@@ -503,7 +507,6 @@ Provides:       bundled(crate(miniz_oxide)) = 0.8.9
 Provides:       bundled(crate(mio)) = 1.1.1
 Provides:       bundled(crate(mockall)) = 0.12.1
 Provides:       bundled(crate(mockall_derive)) = 0.12.1
-Provides:       bundled(crate(moka)) = 0.12.13
 Provides:       bundled(crate(moxcms)) = 0.7.11
 Provides:       bundled(crate(mundy)) = 0.2.2
 Provides:       bundled(crate(mutate_once)) = 0.1.2
@@ -970,7 +973,7 @@ Provides:       bundled(crate(x11rb-protocol)) = 0.13.2
 Provides:       bundled(crate(x25519-dalek)) = 3.0.0~pre.1
 Provides:       bundled(crate(x509-cert)) = 0.2.5
 Provides:       bundled(crate(xcursor)) = 0.3.10
-Provides:       bundled(crate(xdg-desktop-portal-generic)) = 0.1.0
+Provides:       bundled(crate(xdg-desktop-portal-generic)) = 0.2.0
 Provides:       bundled(crate(xdg-home)) = 1.3.0
 Provides:       bundled(crate(xkbcommon)) = 0.7.0
 Provides:       bundled(crate(xkbcommon)) = 0.8.0
@@ -1033,7 +1036,7 @@ Features:
 %prep
 %setup -q
 %patch -P 0 -p1
-# Clear vendored cros-libva checksum so cargo does not reject the patched file
+# Clear vendored cros-libva checksum so cargo doesn't reject the patched file
 sed -i 's/"files":{[^}]*}/"files":{}/' vendor/cros-libva/.cargo-checksum.json
 
 %build
@@ -1050,8 +1053,11 @@ export CARGO_TARGET_DIR="$PWD/target"
 export CARGO_PROFILE_RELEASE_LTO=thin
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=4
 
-# Build release binaries (server + GUI)
-cargo build --release --offline --features "default,vaapi,gui"
+# Build release binaries (server + GUI).
+# vsock + websocket activate the AF_VSOCK (Hyper-V Enhanced
+# Session Mode) and WebSocket+RDCleanPath transport listeners introduced
+# in v1.4.4 — pure Rust additions, no extra system-library BuildRequires.
+cargo build --release --offline --features "default,vaapi,gui,vsock,websocket"
 
 %install
 install -Dm755 target/release/%{name} %{buildroot}%{_bindir}/%{name}
@@ -1090,6 +1096,7 @@ appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/io.lamco.rdp-s
 
 %files
 %license LICENSE
+%license licenses/OpenH264-BINARY_LICENSE.txt
 %doc README.md
 %{_bindir}/%{name}
 %{_bindir}/%{name}-gui
@@ -1101,13 +1108,21 @@ appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/io.lamco.rdp-s
 %{_datadir}/icons/hicolor/*/apps/io.lamco.rdp-server.png
 
 %changelog
+* Fri Jul 03 2026 Greg Lamberson <greg@lamco.io> - 1.4.4-1
+- New upstream release 1.4.4
+- Unified multi-transport: AF_VSOCK (Hyper-V) and experimental WebSocket/RDCleanPath
+- Vulkan Video H.264 encoder; HTTP metrics and health server
+- Per-connection session lifecycle on GNOME; KDE, sway, and COSMIC fixes; many GUI fixes
+- Linux-to-Windows clipboard file copy; systemd unit hardening fix for PAM
+- MSRV 1.89, Rust edition 2024; Licensor Lamco Development LLC, Change Date 2029-06-01
+
 * Tue Mar 10 2026 Greg Lamberson <greg@lamco.io> - 1.4.2-1
-- Fix PipeWire 1.4 compatibility: upgrade pipewire-rs to 0.9.2
-- Fix Unicode keyboard mapping: map Unicode events to evdev keycodes
-- PipeWire stream DRIVER flag: ensure frames at negotiated framerate
-- Fix Wayland WouldBlock handling in event loop
-- Fix MIME charset handling for clipboard text negotiation
-- Retain cros-libva-vp9-compat.patch for libva >= 2.22 compatibility
+- Map Unicode keyboard events to evdev keycodes (rdpdo utype support)
+- Add PipeWire DRIVER stream flag for static desktop frame delivery
+- Handle Wayland WouldBlock errors gracefully in event loop
+- MIME charset fallback for clipboard interop across compositors
+- Fix PipeWire format negotiation to parse compositor-chosen resolution
+- Upgrade to pipewire-rs 0.9.2 (fixes libspa 0.8.0 build failure)
 
 * Thu Mar 05 2026 Greg Lamberson <greg@lamco.io> - 1.4.1-3
 - Fix BitmapConverter not resetting on client reconnection
