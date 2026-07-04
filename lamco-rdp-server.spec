@@ -7,7 +7,7 @@
 
 Name:           lamco-rdp-server
 Version:        1.4.4
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Wayland RDP server for Linux desktop sharing with GUI
 
 # Why RPM Fusion nonfree: BUSL-1.1 is not an OSI-approved open source license.
@@ -1108,6 +1108,9 @@ appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/io.lamco.rdp-s
 %{_datadir}/icons/hicolor/*/apps/io.lamco.rdp-server.png
 
 %changelog
+* Sat Jul 04 2026 Greg Lamberson <greg@lamco.io> - 1.4.4-2
+- Fix aarch64 FTBFS: guard NEON chroma subsampling in an unsafe block
+
 * Fri Jul 03 2026 Greg Lamberson <greg@lamco.io> - 1.4.4-1
 - New upstream release 1.4.4
 - Unified multi-transport: AF_VSOCK (Hyper-V) and experimental WebSocket/RDCleanPath
