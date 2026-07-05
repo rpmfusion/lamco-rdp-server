@@ -30,6 +30,13 @@ Source0:        https://github.com/lamco-admin/lamco-rdp-server/releases/downloa
 %global debug_package %{nil}
 %endif
 
+# EL/RHEL: line-tables Rust debuginfo yields an empty debugsourcefiles.list, which
+# EL treats as a fatal empty-files error (Fedora tolerates it). Ship EL without a
+# separate debuginfo/debugsource subpackage, same as ppc64le.
+%if 0%{?rhel}
+%global debug_package %{nil}
+%endif
+
 # Disable Fedora's system-level LTO flags to prevent double-LTO interaction
 # with Cargo's own LTO (we use CARGO_PROFILE_RELEASE_LTO=thin below)
 %global _lto_cflags %{nil}
