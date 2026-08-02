@@ -7,7 +7,7 @@
 
 Name:           lamco-rdp-server
 Version:        1.4.4
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Wayland RDP server for Linux desktop sharing with GUI
 
 # Why RPM Fusion nonfree: BUSL-1.1 is not an OSI-approved open source license.
@@ -1113,6 +1113,9 @@ appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/io.lamco.rdp-s
 %{_datadir}/icons/hicolor/*/apps/io.lamco.rdp-server.png
 
 %changelog
+* Sun Aug 02 2026 RPM Fusion Release Engineering <leigh123linux@rpmfusion.org> - 1.4.4-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_45_Mass_Rebuild
+
 * Sat Jul 04 2026 Greg Lamberson <greg@lamco.io> - 1.4.4-4
 - Raise ppc64le codegen-units to 256 for the tighter rawhide builder
 
